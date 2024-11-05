@@ -1,0 +1,41 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Google Maps dengan Marker dan Polyline</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBm4u5E6WgcIS4E-ES81s6EPa8smPLdtKI"></script>
+    <script>
+      function initMap() {
+        var mapOptions = {
+          zoom: 7,
+          center: {lat: -6.233889, lng: 106.772944}
+        };
+        var map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+        // Marker
+        var markerA = new google.maps.Marker({position: {lat: -6.233889, lng: 106.772944}, map: map, title: 'Point A'});
+        var markerB = new google.maps.Marker({position: {lat: -6.181556, lng: 106.757694}, map: map, title: 'Point B'});
+        var markerC = new google.maps.Marker({position: {lat: -6.150222, lng: 106.791111}, map: map, title: 'Point C'});
+
+        // Polyline
+        var flightPlanCoordinates = [
+          {lat: -6.233889, lng: 106.772944},
+          {lat: -6.181556, lng: 106.757694},
+          {lat: -6.150222, lng: 106.791111}
+        ];
+        var flightPath = new google.maps.Polyline({
+          path: flightPlanCoordinates,
+          geodesic: true,
+          strokeColor: '#FF0000',
+          strokeOpacity: 1.0,
+          strokeWeight: 2
+        });
+
+        flightPath.setMap(map);
+      }
+    </script>
+  </head>
+  <body onload="initMap()">
+    <div id="map" style="height: 500px; width: 100%;"></div>
+  </body>
+</html>
