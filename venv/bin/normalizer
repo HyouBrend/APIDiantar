@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/Users/richardsimarmata/Downloads/ProjectJarak fix/venv/bin/python3.12" "$0" "$@"
-' '''
+#!/Users/hyou/Documents/Diantar_v.1.1.1/ProjectJarak/venv/bin/python3.13
 # -*- coding: utf-8 -*-
 import re
 import sys

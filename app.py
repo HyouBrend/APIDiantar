@@ -2,11 +2,11 @@ import pyodbc
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from uuid import UUID, uuid4
-from dotenv import load_dotenv
 import traceback
 from distance import get_path, get_distance_and_duration
 from submit_pengantaran import Pengantaran
 from datetime import datetime
+from math import ceil
 
 
 app = Flask(__name__)
@@ -35,6 +35,44 @@ def get_db_connection():
 @app.route('/')
 def index():
     return "Koneksi berhasil!"
+
+class DeliveryOrder:
+    def __init__(self, id, product_code, product_name, opening_balance, qty_in, qty_out,
+                 closing_balance, delivery_order, total_seharusnya, delivery_date,
+                 updated_at, updated_by, created_at, created_by):
+        self.id = id
+        self.product_code = product_code
+        self.product_name = product_name
+        self.opening_balance = opening_balance
+        self.qty_in = qty_in
+        self.qty_out = qty_out
+        self.closing_balance = closing_balance
+        self.delivery_order = delivery_order
+        self.total_seharusnya = total_seharusnya
+        self.delivery_date = delivery_date
+        self.updated_at = updated_at
+        self.updated_by = updated_by
+        self.created_at = created_at
+        self.created_by = created_by  # New field for created_by
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "product_code": self.product_code,
+            "product_name": self.product_name,
+            "opening_balance": self.opening_balance,
+            "qty_in": self.qty_in,
+            "qty_out": self.qty_out,
+            "closing_balance": self.closing_balance,
+            "delivery_order": self.delivery_order,
+            "total_seharusnya": self.total_seharusnya,
+            "delivery_date": self.delivery_date,
+            "updated_at": self.updated_at,
+            "updated_by": self.updated_by,
+            "created_at": self.created_at,
+            "created_by": self.created_by  # Include created_by in dictionary output
+        }
+
 
 class Kontak:
     def __init__(self, KontakID, DisplayName, Type, lokasi, latitude, longitude):
@@ -838,5 +876,485 @@ def get_supir(nama):
         if cnxn:
             cnxn.close()
 
+@app.route('/add_delivery_order', methods=['POST'])
+def add_delivery_order():
+    data_list = request.json  # Expecting a list of data dictionaries
+
+    if not isinstance(data_list, list):
+        return jsonify({"error": "Request body must be a list of delivery order items."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        for data in data_list:
+            product_code = data.get('product_code')
+            product_name = data.get('product_name')
+            delivery_order = data.get('delivery_order')
+            delivery_date = data.get('delivery_date')
+            created_by = data.get('created_by')  # New field for created_by
+
+            # Check for required fields in each item
+            if not all([product_code, product_name, delivery_order, delivery_date, created_by]):
+                return jsonify({"error": f"Missing fields in item with product_code {product_code}"}), 400
+
+            # Check if the product_code and delivery_date already exist
+            cursor.execute("""
+                SELECT id FROM DeliveryOrder WHERE product_code = ? AND delivery_date = ?
+            """, (product_code, delivery_date))
+            existing_entry = cursor.fetchone()
+
+            if existing_entry:
+                # If exists, update the delivery_order
+                cursor.execute("""
+                    UPDATE DeliveryOrder
+                    SET delivery_order = ?, updated_at = ?, updated_by = ?
+                    WHERE product_code = ? AND delivery_date = ?
+                """, (delivery_order, datetime.now(), created_by, product_code, delivery_date))
+            else:
+                # Insert new record
+                cursor.execute("""
+                    INSERT INTO DeliveryOrder (product_code, product_name, delivery_order, delivery_date, created_at, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (product_code, product_name, delivery_order, delivery_date, datetime.now(), created_by))
+
+        conn.commit()
+        return jsonify({"message": "Delivery orders added/updated successfully."}), 200
+
+    except pyodbc.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+from flask import request, jsonify
+from math import ceil
+import pyodbc
+import traceback
+
+@app.route('/get_delivery_order', methods=['GET'])
+def get_delivery_order():
+    cnxn = None
+    cursor = None
+    try:
+        # Get page and page_size from query parameters, defaulting to 1 and 10
+        page = int(request.args.get('page', 1))
+        page_size = int(request.args.get('page_size', 10))
+        
+        # Get start_date and end_date from query parameters for date range filtering
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        # Database connection
+        cnxn = get_db_connection()
+        if cnxn is None:
+            return jsonify({"message": "Database connection error"}), 500
+
+        cursor = cnxn.cursor()
+
+        # Get total count of items with date filtering
+        count_query = "SELECT COUNT(*) FROM dbo.DeliveryOrder WHERE 1=1"
+        params = []
+
+        if start_date:
+            count_query += " AND created_at >= ?"
+            params.append(start_date)
+        if end_date:
+            count_query += " AND created_at <= ?"
+            params.append(end_date)
+
+        cursor.execute(count_query, *params)
+        total_items = cursor.fetchone()[0]
+        
+        # Calculate total pages
+        total_pages = ceil(total_items / page_size)
+
+        # Query with pagination and date filtering, ordered by created_at descending
+        offset = (page - 1) * page_size
+        data_query = """
+            SELECT 
+                id, product_code, product_name, opening_balance, qty_in, qty_out,
+                closing_balance, delivery_order, total_seharusnya, delivery_date,
+                updated_at, updated_by, created_at, created_by
+            FROM dbo.DeliveryOrder
+            WHERE 1=1
+        """
+
+        if start_date:
+            data_query += " AND created_at >= ?"
+        if end_date:
+            data_query += " AND created_at <= ?"
+
+        data_query += " ORDER BY created_at DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"
+        params.extend([offset, page_size])
+        
+        cursor.execute(data_query, *params)
+        rows = cursor.fetchall()
+
+        # Convert rows to list of dictionaries
+        delivery_orders = [
+            DeliveryOrder(
+                id=row.id,
+                product_code=row.product_code,
+                product_name=row.product_name,
+                opening_balance=row.opening_balance,
+                qty_in=row.qty_in,
+                qty_out=row.qty_out,
+                closing_balance=row.closing_balance,
+                delivery_order=row.delivery_order,
+                total_seharusnya=row.total_seharusnya,
+                delivery_date=row.delivery_date,
+                updated_at=row.updated_at,
+                updated_by=row.updated_by,
+                created_at=row.created_at,
+                created_by=row.created_by
+            ).to_dict() for row in rows
+        ]
+
+        return jsonify({
+            "data": delivery_orders,
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_items": total_items,
+                "total_pages": total_pages
+            },
+            "message": "Success"
+        })
+
+    except pyodbc.Error as e:
+        # Handle and log error
+        error_message = str(e)
+        error_traceback = traceback.format_exc()
+        return jsonify({"error": error_message, "traceback": error_traceback}), 500
+
+    finally:
+        # Ensure resources are closed
+        if cursor:
+            cursor.close()
+        if cnxn:
+            cnxn.close()
+
+
+@app.route('/detail_delivery_order/<int:id>', methods=['GET'])
+def get_delivery_order_by_id(id):
+    cnxn = None
+    cursor = None
+    try:
+        # Establish database connection
+        cnxn = get_db_connection()
+        if cnxn is None:
+            return jsonify({"message": "Database connection error"}), 500
+
+        cursor = cnxn.cursor()
+
+        # Fetch delivery order by ID
+        cursor.execute("""
+            SELECT 
+                id, product_code, product_name, opening_balance, qty_in, qty_out,
+                closing_balance, delivery_order, total_seharusnya, delivery_date,
+                updated_at, updated_by, created_at, created_by
+            FROM dbo.DeliveryOrder
+            WHERE id = ?
+        """, id)
+        
+        row = cursor.fetchone()
+
+        # If no record is found, return a 404 error
+        if row is None:
+            return jsonify({"message": "DeliveryOrder not found"}), 404
+
+        # Convert result to dictionary
+        order = DeliveryOrder(
+            id=row.id,
+            product_code=row.product_code,
+            product_name=row.product_name,
+            opening_balance=row.opening_balance,
+            qty_in=row.qty_in,
+            qty_out=row.qty_out,
+            closing_balance=row.closing_balance,
+            delivery_order=row.delivery_order,
+            total_seharusnya=row.total_seharusnya,
+            delivery_date=row.delivery_date,
+            updated_at=row.updated_at,
+            updated_by=row.updated_by,
+            created_at=row.created_at,
+            created_by=row.created_by  # Include created_by in response
+        )
+
+        return jsonify({
+            "data": order.to_dict(),
+            "message": "Success"
+        })
+
+    except pyodbc.Error as e:
+        # Handle and log error
+        error_message = str(e)
+        error_traceback = traceback.format_exc()
+        return jsonify({"error": error_message, "traceback": error_traceback}), 500
+
+    finally:
+        # Ensure resources are closed
+        if cursor:
+            cursor.close()
+        if cnxn:
+            cnxn.close()
+
+@app.route('/delete_detail_delivery_order/<int:id>', methods=['DELETE'])
+def delete_delivery_order_by_id(id):
+    cnxn = None
+    cursor = None
+    try:
+        # Establish database connection
+        cnxn = get_db_connection()
+        if cnxn is None:
+            return jsonify({"message": "Database connection error"}), 500
+
+        cursor = cnxn.cursor()
+
+        # Delete delivery order by ID
+        cursor.execute("""
+            DELETE FROM dbo.DeliveryOrder
+            WHERE id = ?
+        """, id)
+        
+        # Commit the changes
+        cnxn.commit()
+
+        # Check if the order was deleted
+        if cursor.rowcount == 0:
+            return jsonify({"message": "DeliveryOrder not found"}), 404
+
+        return jsonify({
+            "message": "Delivery order deleted successfully"
+        }), 200
+
+    except pyodbc.Error as e:
+        # Handle and log error
+        error_message = str(e)
+        error_traceback = traceback.format_exc()
+        return jsonify({"error": error_message, "traceback": error_traceback}), 500
+
+    finally:
+        # Ensure resources are closed
+        if cursor:
+            cursor.close()
+        if cnxn:
+            cnxn.close()
+
+@app.route('/edit_delivery_order/<int:id>', methods=['POST'])
+def edit_delivery_order(id):
+    cnxn = None
+    cursor = None
+    try:
+        # Establish database connection
+        cnxn = get_db_connection()
+        if cnxn is None:
+            return jsonify({"message": "Database connection error"}), 500
+
+        cursor = cnxn.cursor()
+
+        # Get data from the request body
+        data = request.get_json()
+
+        # Extract the values from the request data
+        product_name = data.get('productName')
+        delivery_order = data.get('deliveryOrder')
+        updated_by = data.get('updatedBy')
+        delivery_date = data.get('deliveryDate')  # New field for delivery date
+        updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Set current timestamp
+
+        # Ensure the required fields are present
+        if not product_name or not delivery_order or not updated_by:
+            return jsonify({"message": "Missing required fields"}), 400
+
+        # Validate and format delivery_date if provided
+        if delivery_date:
+            try:
+                # Ensure delivery date is in the correct format (yyyy-MM-dd)
+                parsed_date = datetime.strptime(delivery_date, '%Y-%m-%d')
+                delivery_date = parsed_date.strftime('%Y-%m-%d')  # Store in 'yyyy-MM-dd' format
+            except ValueError:
+                return jsonify({"message": "Invalid delivery date format. Use yyyy-MM-dd"}), 400
+        else:
+            delivery_date = None  # If no delivery date is provided, set it to None
+
+        # Update the delivery order in the database
+        if delivery_date:
+            cursor.execute("""
+                UPDATE dbo.DeliveryOrder
+                SET product_name = ?, 
+                    delivery_order = ?, 
+                    updated_by = ?, 
+                    updated_at = ?,
+                    delivery_date = ?
+                WHERE id = ?
+            """, (product_name, delivery_order, updated_by, updated_at, delivery_date, id))
+        else:
+            cursor.execute("""
+                UPDATE dbo.DeliveryOrder
+                SET product_name = ?, 
+                    delivery_order = ?, 
+                    updated_by = ?, 
+                    updated_at = ?
+                WHERE id = ?
+            """, (product_name, delivery_order, updated_by, updated_at, id))
+
+        # Commit the transaction
+        cnxn.commit()
+
+        # Check if any rows were updated
+        if cursor.rowcount == 0:
+            return jsonify({"message": "Delivery order not found"}), 404
+
+        return jsonify({"message": "Delivery order updated successfully"}), 200
+
+    except pyodbc.Error as e:
+        # Handle and log error
+        error_message = str(e)
+        error_traceback = traceback.format_exc()
+        return jsonify({"error": error_message, "traceback": error_traceback}), 500
+
+    finally:
+        # Ensure resources are closed
+        if cursor:
+            cursor.close()
+        if cnxn:
+            cnxn.close()
+
+@app.route('/list_produk', methods=['GET'])
+def get_products():
+    cnxn = None
+    cursor = None
+    try:
+        # Mendapatkan koneksi database
+        cnxn = get_db_connection()
+        if cnxn is None:
+            return jsonify({"message": "Database connection error"}), 500
+
+        cursor = cnxn.cursor()
+
+        # Query data tanpa pagination
+        cursor.execute("""
+            SELECT 
+                Name, ProductCode, Description, Stock, Unit, 
+                BuyPrice, DefaultBuyAccountCode, DefaultBuyTaxName, 
+                SellPrice, DefaultSellAccountCode, DefaultSellTaxName, 
+                MinimumStock, ProductCategory
+            FROM 
+                dbo.Produk
+        """)
+        
+        rows = cursor.fetchall()
+
+        # Parsing hasil query ke dalam format JSON
+        products = []
+        for row in rows:
+            product = {
+                "Name": row.Name,
+                "ProductCode": row.ProductCode,
+                "Description": row.Description,
+                "Stock": row.Stock,
+                "Unit": row.Unit,
+                "BuyPrice": row.BuyPrice,
+                "DefaultBuyAccountCode": row.DefaultBuyAccountCode,
+                "DefaultBuyTaxName": row.DefaultBuyTaxName,
+                "SellPrice": row.SellPrice,
+                "DefaultSellAccountCode": row.DefaultSellAccountCode,
+                "DefaultSellTaxName": row.DefaultSellTaxName,
+                "MinimumStock": row.MinimumStock,
+                "ProductCategory": row.ProductCategory
+            }
+            products.append(product)
+
+        return jsonify({
+            "data": products,
+            "message": "Success"
+        })
+
+    except pyodbc.Error as e:
+        # Tangkap error database
+        error_message = str(e)
+        error_traceback = traceback.format_exc()
+        return jsonify({"error": error_message, "traceback": error_traceback}), 500
+
+    finally:
+        # Tutup cursor dan koneksi setelah selesai
+        if cursor:
+            cursor.close()
+        if cnxn:
+            cnxn.close()
+
+@app.route('/get_produk/<nama>', methods=['GET'])
+def get_produk(nama):
+    cnxn = None
+    cursor = None
+    try:
+        # Mendapatkan koneksi database
+        cnxn = get_db_connection()
+        cursor = cnxn.cursor()
+
+        # Menjalankan query SQL menggunakan parameterized query untuk menghindari SQL Injection
+        cursor.execute("""
+            SELECT 
+                Name, ProductCode, Description, Stock, Unit, 
+                BuyPrice, DefaultBuyAccountCode, DefaultBuyTaxName, 
+                SellPrice, DefaultSellAccountCode, DefaultSellTaxName, 
+                MinimumStock, ProductCategory
+            FROM 
+                dbo.Produk
+            WHERE 
+                Name LIKE ?
+        """, ('%' + nama + '%',))
+        
+        rows = cursor.fetchall()
+
+        # Parsing hasil query ke dalam format JSON
+        products = []
+        for row in rows:
+            product = {
+                "Name": row.Name,
+                "ProductCode": row.ProductCode,
+                "Description": row.Description,
+                "Stock": row.Stock,
+                "Unit": row.Unit,
+                "BuyPrice": row.BuyPrice,
+                "DefaultBuyAccountCode": row.DefaultBuyAccountCode,
+                "DefaultBuyTaxName": row.DefaultBuyTaxName,
+                "SellPrice": row.SellPrice,
+                "DefaultSellAccountCode": row.DefaultSellAccountCode,
+                "DefaultSellTaxName": row.DefaultSellTaxName,
+                "MinimumStock": row.MinimumStock,
+                "ProductCategory": row.ProductCategory
+            }
+            products.append(product)
+
+        # Mengembalikan hasil dalam format JSON
+        return jsonify({"message": "Success", "data": products})
+
+    except pyodbc.DatabaseError as db_error:
+        # Jika ada error pada database, log detail error
+        app.logger.error(f"Database error: {db_error}")
+        app.logger.error("Stack trace: " + traceback.format_exc())
+        error_message = {"error": str(db_error)}
+        return jsonify({"message": "Database error occurred", "error": error_message}), 500
+
+    except Exception as e:
+        # Menangani error umum lainnya
+        app.logger.error(f"General error: {e}")
+        app.logger.error("Stack trace: " + traceback.format_exc())
+        error_message = {"error": str(e)}
+        return jsonify({"message": "An error occurred", "error": error_message}), 500
+
+    finally:
+        # Pastikan cursor dan koneksi ditutup setelah selesai
+        if cursor:
+            cursor.close()
+        if cnxn:
+            cnxn.close()
+
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002, debug=True)
+    app.run(host='0.0.0.0', port=5100, debug=True)
