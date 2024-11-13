@@ -929,11 +929,6 @@ def add_delivery_order():
         if conn:
             conn.close()
 
-from flask import request, jsonify
-from math import ceil
-import pyodbc
-import traceback
-
 @app.route('/get_delivery_order', methods=['GET'])
 def get_delivery_order():
     cnxn = None
@@ -1159,25 +1154,24 @@ def edit_delivery_order(id):
         # Get data from the request body
         data = request.get_json()
 
-        # Extract the values from the request data
+        # Extract and validate values from the request data
         product_name = data.get('productName')
         delivery_order = data.get('deliveryOrder')
         updated_by = data.get('updatedBy')
-        delivery_date = data.get('deliveryDate')  # New field for delivery date
-        updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Set current timestamp
+        delivery_date = data.get('deliveryDate')  # New field for delivery date in full ISO format
+        updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Ensure the required fields are present
+        # Check required fields
         if not product_name or not delivery_order or not updated_by:
             return jsonify({"message": "Missing required fields"}), 400
 
-        # Validate and format delivery_date if provided
+        # Validate and parse delivery_date in ISO format (yyyy-MM-ddTHH:mm:ss.sss)
         if delivery_date:
             try:
-                # Ensure delivery date is in the correct format (yyyy-MM-dd)
-                parsed_date = datetime.strptime(delivery_date, '%Y-%m-%d')
-                delivery_date = parsed_date.strftime('%Y-%m-%d')  # Store in 'yyyy-MM-dd' format
+                parsed_date = datetime.strptime(delivery_date, '%Y-%m-%dT%H:%M:%S.%f')
+                delivery_date = parsed_date.strftime('%Y-%m-%d')  # Store as 'yyyy-MM-dd'
             except ValueError:
-                return jsonify({"message": "Invalid delivery date format. Use yyyy-MM-dd"}), 400
+                return jsonify({"message": "Invalid delivery date format. Use yyyy-MM-ddTHH:mm:ss.sss"}), 400
         else:
             delivery_date = None  # If no delivery date is provided, set it to None
 
