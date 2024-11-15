@@ -24,6 +24,7 @@ This project is a **Flask-based RESTful API** for managing delivery orders, driv
 ### Prerequisites
 
 - Python 3.7+
+- A valid **Google Maps API Key** with access to the Distance Matrix API.
 - SQL Server
 - Required Python packages:
   - Flask
@@ -142,13 +143,3 @@ This project is a Python script that calculates the most efficient route between
 ## **Deployment**
 
 To deploy this API in production, consider hosting it on platforms like **Azure**, **AWS**, or **Google Cloud**. For local development, it uses Flask’s built-in server, but for production, it’s recommended to use **Gunicorn** or **uWSGI** with **Nginx**.
-
-## **Prerequisites**
-
-- Python 3.7+
-- A valid **Google Maps API Key** with access to the Distance Matrix API.
-
-### **Required Python Libraries**
-Install the required packages before running the script:
-  ```bash
-  pip install requests
