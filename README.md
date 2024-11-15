@@ -37,3 +37,84 @@ This project is a **Flask-based RESTful API** for managing delivery orders, driv
    ```bash
    git clone https://github.com/yourusername/your-repo-name.git
    cd your-repo-name
+
+2.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+
+3. **Set up your database connection in app.py**:
+    ```bash
+    server = 'database.windows.net'
+    database = 'database'
+    username = 'username'
+    password = 'password'
+    driver = 'ODBC Driver 17 for SQL Server'
+
+4. **Run the app**:
+    ```bash
+    python app.py
+    
+The app will be accessible at http://localhost:5100.
+
+# API Documentation
+
+This project provides a Flask-based RESTful API for managing delivery orders, drivers, customers, and product data. Below are the key API endpoints, database requirements, custom classes, and deployment instructions.
+
+---
+
+## **API Endpoints**
+
+### **Delivery Orders**
+- **POST** `/add_delivery_order`: Add new delivery orders.
+- **GET** `/get_delivery_order`: Retrieve all delivery orders with optional pagination and date range filtering.
+- **GET** `/detail_delivery_order/<id>`: Retrieve details of a specific delivery order by ID.
+- **DELETE** `/delete_detail_delivery_order/<id>`: Delete a delivery order by ID.
+- **POST** `/edit_delivery_order/<id>`: Edit an existing delivery order by ID.
+
+### **Driver and Customer Management**
+- **GET** `/list_driver`: Retrieve a list of drivers.
+- **GET** `/get_driver/<name>`: Retrieve a driver by name.
+- **GET** `/list_pelanggan`: Retrieve a list of customers with location data.
+- **GET** `/get_pelanggan/<name>`: Retrieve a customer by name.
+
+### **Product Management**
+- **GET** `/list_produk`: Retrieve a list of all products.
+- **GET** `/get_produk/<name>`: Retrieve products by name.
+
+### **Route Optimization and Delivery History**
+- **POST** `/submit_perjalanan`: Submit a new delivery route.
+- **POST** `/history_pengantaran`: Retrieve delivery history with filtering options.
+- **POST** `/cek_google`: Check optimal route with Google Maps data.
+
+---
+
+## **Database Setup**
+
+The API uses stored procedures for certain actions (e.g., updating delivery details). Ensure these procedures are created in your SQL Server database for the API to function as expected.
+
+---
+
+## **Custom Classes**
+
+- **DeliveryOrder**: Manages delivery order data.
+- **Kontak**: Manages customer contact details.
+- **Karyawan**: Manages employee details, specifically drivers.
+- **HistoryPengantaranFilter** and **ReturnCekGoogle**: Filters and formats history data for delivery routes.
+- **SubmitPengantaran**: Manages submission data for new deliveries.
+
+---
+
+## **Error Handling**
+
+- The API includes structured error handling for database connection errors, SQL exceptions, and general exceptions.
+- Log messages are generated for debugging, capturing full stack traces when errors occur.
+
+---
+
+## **Deployment**
+
+To deploy this API in production, consider hosting it on platforms like **Azure**, **AWS**, or **Google Cloud**. For local development, it uses Flask’s built-in server, but for production, it’s recommended to use **Gunicorn** or **uWSGI** with **Nginx**.
+
+### **Example Deployment with Gunicorn**
+```bash
+gunicorn -w 4 -b 0.0.0.0:5100 app:app
