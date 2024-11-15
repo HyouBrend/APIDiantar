@@ -94,6 +94,46 @@ The API uses stored procedures for certain actions (e.g., updating delivery deta
 
 ---
 
+# Route Optimization with Google Maps API
+
+This project is a Python script that calculates the most efficient route between multiple points using Google Maps API. It determines the shortest distance and estimated travel time for delivery or other routing purposes. The code includes caching for API responses to improve performance and reduce redundant API calls.
+
+---
+
+## **Features**
+
+1. **Google Maps API Integration**:
+   - Fetches distance and duration between two locations using the Google Maps Distance Matrix API.
+   - Converts distance to kilometers and duration to minutes for easy interpretation.
+
+2. **Route Optimization**:
+   - Calculates the most efficient path starting from a specified point (e.g., "Toko Permata").
+   - Implements a nearest neighbor algorithm to minimize travel distance and duration.
+
+3. **Cache Implementation**:
+   - Reduces redundant API calls by caching distances and durations between points.
+
+4. **Customizable Points**:
+   - Allows you to define multiple locations (latitude and longitude) for route planning.
+
+5. **Google Maps URL Generation**:
+   - Generates a sharable Google Maps URL for the optimized route.
+
+---
+
+## **Prerequisites**
+
+- Python 3.7+
+- A valid **Google Maps API Key** with access to the Distance Matrix API.
+
+### **Required Python Libraries**
+Install the required packages before running the script:
+  ```bash
+  pip install requests
+
+---
+
+
 ## **Custom Classes**
 
 - **DeliveryOrder**: Manages delivery order data.
