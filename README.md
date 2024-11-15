@@ -121,18 +121,6 @@ This project is a Python script that calculates the most efficient route between
 
 ---
 
-## **Prerequisites**
-
-- Python 3.7+
-- A valid **Google Maps API Key** with access to the Distance Matrix API.
-
-### **Required Python Libraries**
-Install the required packages before running the script:
-  ```bash
-  pip install requests
-
----
-
 
 ## **Custom Classes**
 
@@ -155,6 +143,12 @@ Install the required packages before running the script:
 
 To deploy this API in production, consider hosting it on platforms like **Azure**, **AWS**, or **Google Cloud**. For local development, it uses Flask’s built-in server, but for production, it’s recommended to use **Gunicorn** or **uWSGI** with **Nginx**.
 
-### **Example Deployment with Gunicorn**
-```bash
-gunicorn -w 4 -b 0.0.0.0:5100 app:app
+## **Prerequisites**
+
+- Python 3.7+
+- A valid **Google Maps API Key** with access to the Distance Matrix API.
+
+### **Required Python Libraries**
+Install the required packages before running the script:
+  ```bash
+  pip install requests
