@@ -7,7 +7,7 @@ import datetime
 TestTokenJWT = Flask(__name__)
 
 # Secret key untuk enkripsi JWT
-TestTokenJWT.config['SECRET_KEY'] = 'jwtjwt123'
+TestTokenJWT.config['SECRET_KEY'] = 'JWT'
 
 # Dummy data pengguna
 users = {

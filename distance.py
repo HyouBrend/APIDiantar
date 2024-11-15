@@ -1,7 +1,7 @@
 import requests
 from itertools import permutations
 # Replace with your actual API key
-API_KEY = 'AIzaSyA2UR3JwGM74DzzW7nfeaFRE-CsO0nQA7Y'
+API_KEY = 'API_KEY'
 
 # Coordinates of the points (latitude,longitude)
 point_A = "-6.165456265151834,106.76020926012484"

@@ -8,7 +8,7 @@ points = {
 }
 
 # API Key Google Maps
-api_key = 'AIzaSyBm4u5E6WgcIS4E-ES81s6EPa8smPLdtKI'
+API_KEY = 'API_KEY'
 
 # Template HTML
 html_template = """
@@ -58,7 +58,7 @@ html_template = """
 template = Template(html_template)
 
 # Render template dengan data
-rendered_html = template.render(api_key=api_key, points=points)
+rendered_html = template.render(api_key=API_KEY, points=points)
 
 # Simpan file HTML
 with open('map_with_markers_and_polyline.html', 'w') as file:

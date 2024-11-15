@@ -12,11 +12,10 @@ from math import ceil
 app = Flask(__name__)
 CORS(app)
 
-# Directly assign the database connection details
-server = 'diantarin.database.windows.net'
-database = 'diantarin'
-username = 'diantarin'
-password = '4nomal1D1antar1n'
+server = 'database.windows.net'
+database = 'database'
+username = 'username'
+password = 'password'
 driver = 'ODBC Driver 17 for SQL Server'
 
 # Function to get a database connection
@@ -1157,7 +1156,7 @@ def edit_delivery_order(id):
         # Extract and validate values from the request data
         product_name = data.get('productName')
         delivery_order = data.get('deliveryOrder')
-        updated_by = data.get('updatedBy')
+        updated_by = data.get('updatedBy') 
         delivery_date = data.get('deliveryDate')  # New field for delivery date in full ISO format
         updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 

@@ -1,7 +1,7 @@
 import requests
 
 # Replace with your actual API key
-API_KEY = 'AIzaSyBm4u5E6WgcIS4E-ES81s6EPa8smPLdtKI'
+API_KEY = 'API_KEY'
 
 # Coordinates of the points (latitude,longitude)
 point_A = "-6.165456265151834,106.76020926012484"
